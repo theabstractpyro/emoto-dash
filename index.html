@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>eMoto Dash</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/dash.css">
+</head>
+<body class="theme-night">
+  <main class="dash" id="dash" aria-live="off">
+    <header class="topbar">
+      <div class="links">
+        <span class="link" id="link-ctrl" data-state="off"><i></i>CTRL</span>
+        <span class="link" id="link-bms" data-state="absent"><i></i>BMS</span>
+        <span class="demo-tag" id="demo-tag" hidden>DEMO</span>
+      </div>
+      <div class="banner" id="banner" hidden></div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="tools">
+        <button class="icon-btn" id="btn-theme" aria-label="Toggle day or night theme">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" class="fill"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-details" aria-label="Diagnostics">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7.2v.1"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-fullscreen" aria-label="Full screen">
+          <svg viewBox="0 0 24 24"><path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="cell power">
+      <div class="cell-label">POWER</div>
+      <div class="gauge-wrap">
+        <svg class="gauge" id="power-gauge" role="img" aria-label="Power gauge"></svg>
+        <div class="gauge-readout">
+          <span class="num" id="power-kw">–</span>
+          <span class="unit">kW</span>
+        </div>
+      </div>
+      <div class="power-sub"><span class="num" id="current-a">–</span> A</div>
+    </section>
+
+    <section class="cell speed">
+      <div class="speed-value num" id="speed">–</div>
+      <div class="speed-unit" id="speed-unit">MPH</div>
+      <div class="drive">
+        <span class="gear" id="gear">–</span>
+        <span class="mode" id="mode">–</span>
+      </div>
+      <div class="telltales">
+        <span class="tt" id="tt-regen" data-tt="regen">REGEN</span>
+        <span class="tt" id="tt-brake" data-tt="brake">BRAKE</span>
+        <span class="tt" id="tt-cruise" data-tt="cruise">CRUISE</span>
+        <span class="tt" id="tt-boost" data-tt="boost">BOOST</span>
+      </div>
+    </section>
+
+    <section class="cell battery">
+      <div class="cell-label">BATTERY <span class="src" id="soc-src"></span></div>
+      <div class="soc"><span class="num" id="soc">–</span><span class="pct">%</span></div>
+      <div class="soc-bar" id="soc-bar"></div>
+      <div class="batt-row">
+        <span><b class="num" id="voltage">–</b> V</span>
+        <span><b class="num" id="cell-v">–</b> V/cell</span>
+      </div>
+      <div class="range">RANGE <b class="num" id="range">–</b> <span id="range-unit">mi</span></div>
+    </section>
+
+    <footer class="stats">
+      <div class="stat" id="stat-motor"><span class="stat-label">MOTOR</span><b class="num" id="motor-temp">–</b></div>
+      <div class="stat" id="stat-ctrl"><span class="stat-label">CONTROLLER</span><b class="num" id="ctrl-temp">–</b></div>
+      <div class="stat"><span class="stat-label">TRIP <span id="trip-unit">mi</span></span><b class="num" id="trip">0.0</b></div>
+      <div class="stat"><span class="stat-label" id="eff-label">Wh/mi</span><b class="num" id="eff">–</b></div>
+      <div class="stat"><span class="stat-label">RIDE TIME</span><b class="num" id="ride-time">0:00</b></div>
+    </footer>
+  </main>
+
+  <div class="overlay" id="start">
+    <div class="start-card">
+      <h1>eMoto Dash</h1>
+      <p class="start-msg" id="start-msg">Connect to your Fardriver controller over Bluetooth.</p>
+      <button class="big-btn primary" id="btn-connect">Connect controller</button>
+      <button class="big-btn" id="btn-demo">Demo ride</button>
+      <p class="fine" id="bt-unsupported" hidden>This browser has no Web Bluetooth. Use Chrome on Android, served over HTTPS.</p>
+    </div>
+  </div>
+
+  <dialog class="sheet" id="settings">
+    <form method="dialog" id="settings-form">
+      <header class="sheet-head">
+        <h2>Settings</h2>
+        <span class="head-btns">
+          <button class="big-btn" value="cancel">Cancel</button>
+          <button class="big-btn primary" value="save" id="settings-save">Save</button>
+        </span>
+      </header>
+      <div class="sheet-body" id="settings-fields"></div>
+      <div class="sheet-actions">
+        <button type="button" class="big-btn" id="btn-calibrate">Calibrate speed with GPS</button>
+        <button type="button" class="big-btn" id="btn-reset-trip">Reset trip</button>
+        <button type="button" class="big-btn" id="btn-disconnect">Disconnect</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="details">
+    <form method="dialog">
+      <header class="sheet-head">
+        <h2>Diagnostics</h2>
+        <button class="big-btn primary" value="close">Close</button>
+      </header>
+      <div class="sheet-body"><table class="details" id="details-table"></table></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
