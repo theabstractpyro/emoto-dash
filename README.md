@@ -28,7 +28,33 @@ The **alert banner** shows the most important item first:
 **Diagnostics (ⓘ)** lists every decoded value: RPM, phase currents, throttle voltage,
 modulation, field weakening, fault and state bits, firmware, frames per second.
 
-## Putting it on your phone
+## Android app (recommended)
+
+The controller's Bluetooth module takes a **new random address every time it powers up**. A web
+page can only reconnect to a device the rider has approved in Chrome's chooser, so the web version
+needs one tap ("Tap to reconnect") after each key-on. The Android app has no such limit. It scans
+for the controller by **name** (`YuanQu…`, or one you pick from a list) and connects by itself
+whenever the controller is powered on.
+
+**Install:** on the phone, open
+<https://github.com/theabstractpyro/emoto-dash/releases/latest/download/emoto-dash.apk>, open the
+downloaded file, and allow installs from your browser if Android asks. Updates install the same way,
+over the existing app (*Settings → Update app* opens the release page). On first launch, allow the
+Bluetooth permission (or Location on Android 11 and older, which Android needs for Bluetooth
+scanning). The app keeps the screen on and runs full screen.
+
+**How it is built:** `.github/workflows/android.yml` runs on every push to `main`. It copies the
+web app into a Capacitor project (`android-app/`), builds a release APK with the
+[`@capacitor-community/bluetooth-le`](https://github.com/capacitor-community/bluetooth-le) plugin,
+signs it, and replaces the `android` release. The dash code is shared; `js/sources/fardriver-native.js`
+is used instead of Web Bluetooth when it runs inside the app.
+
+**Signing:** every APK must be signed with the same key, or Android refuses to install an update
+over the old version. The key lives outside the repository in `../emoto-dash-signing/` (keep that
+folder private and backed up). It is given to GitHub once as encrypted secrets by running
+`bash ../emoto-dash-signing/set-github-secrets.sh`.
+
+## Putting it on your phone (web version)
 
 Web Bluetooth needs **Chrome on Android**, and the page has to be served over **HTTPS** (or
 `localhost`). iPhones are not supported: Safari has no Web Bluetooth.

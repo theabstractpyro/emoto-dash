@@ -1,0 +1,18 @@
+{
+  "name": "emoto-dash-android",
+  "private": true,
+  "type": "module",
+  "description": "Android (Capacitor) wrapper for eMoto Dash. Built by .github/workflows/android.yml.",
+  "scripts": {
+    "prepare-www": "node prepare-www.mjs",
+    "patch-android": "node patch-android.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/bluetooth-le": "8.3.0",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

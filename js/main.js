@@ -4,6 +4,7 @@ import {
   applyPatch, createTelemetry, derive, integrateTrip, loadTrip, newTrip, rejectTempGlitches, rpmToKmh, saveTrip,
 } from './store.js';
 import { FardriverBle } from './sources/fardriver-ble.js';
+import { FardriverNative, isNativeApp } from './sources/fardriver-native.js';
 import { DemoSource } from './sources/demo.js';
 import { DashView } from './ui/dash.js';
 import { APP_VERSION } from './version.js';
@@ -17,13 +18,26 @@ let settings = loadSettings();
 let trip = loadTrip();
 const telemetry = createTelemetry();
 const view = new DashView();
-const ble = FardriverBle.supported ? new FardriverBle(settings) : null;
+// In the Android app the controller is found by name with native scanning (no chooser, and
+// immune to its address changing at every power-up); in a browser, Web Bluetooth is used.
+const NATIVE = isNativeApp();
+const ble = NATIVE ? new FardriverNative(settings) : FardriverBle.supported ? new FardriverBle(settings) : null;
+const canAutoConnect = () => NATIVE || FardriverBle.canRestore;
 let ctrlSource = null;
 const linkStats = {
   name: '–', fps: 0, frames: 0, dropped: 0, attempts: 0, lastError: '', reconnectMethod: '–',
-  canRestore: FardriverBle.canRestore, appVersion: APP_VERSION,
+  canRestore: canAutoConnect(), appVersion: APP_VERSION + (NATIVE ? ' (Android app)' : ' (web)'),
 };
 const CHROME_FLAG_URL = 'chrome://flags/#enable-web-bluetooth-new-permissions-backend';
+const APK_URL = 'https://github.com/theabstractpyro/emoto-dash/releases/latest/download/emoto-dash.apk';
+const RELEASES_URL = 'https://github.com/theabstractpyro/emoto-dash/releases/latest';
+
+// Problems only the native app can detect, with the button that fixes each one.
+const NATIVE_FIXES = {
+  'bluetooth-off': { label: 'Turn on Bluetooth', run: () => ble.plugin.requestEnable() },
+  'location-off': { label: 'Turn on Location (Android needs it to find Bluetooth devices)', run: () => ble.plugin.openLocationSettings() },
+  permission: { label: 'Allow Bluetooth access', run: () => ble.plugin.openAppSettings() },
+};
 let framesThisSecond = 0;
 
 // ---------- Theme ----------
@@ -78,6 +92,14 @@ function startDemo() {
 
 async function connectController({ showAll = false } = {}) {
   if (!ble) return;
+  if (NATIVE) {
+    if (showAll) return openChooser();
+    setCtrlSource(ble);
+    $('start').hidden = true;
+    ble.start();
+    keepAwake();
+    return;
+  }
   setCtrlSource(ble);
   $('start-msg').textContent = 'Choose your controller in the list…';
   try {
@@ -102,6 +124,12 @@ async function tryRestore() {
   if (!settings.autoConnectOnLaunch) {
     logLink('Launch: auto-connect at launch is turned off in Settings');
     showStart(null);
+    return;
+  }
+  if (NATIVE) {
+    $('start').hidden = true;
+    ble.start();
+    keepAwake();
     return;
   }
   let result;
@@ -154,7 +182,16 @@ function tick() {
     bms: linkState(telemetry.bms, d.bmsFresh),
   });
   const st = telemetry.ctrl.status;
-  $('btn-reconnect').hidden = !(ctrlSource === ble && ble && !d.ctrlFresh && (st === 'reconnecting' || st === 'connecting'));
+  const waiting = ctrlSource === ble && !!ble && !d.ctrlFresh && (st === 'reconnecting' || st === 'connecting');
+  const reconnectBtn = $('btn-reconnect');
+  if (NATIVE) {
+    // Native reconnects by itself; the button only appears when Android needs something from the rider.
+    const fix = NATIVE_FIXES[ble.problem];
+    reconnectBtn.hidden = !(waiting && fix);
+    if (fix && reconnectBtn.textContent !== fix.label) reconnectBtn.textContent = fix.label;
+  } else {
+    reconnectBtn.hidden = !waiting;
+  }
   if ($('details').open) {
     renderDetails($('details-table'), telemetry, linkStats);
     renderLog();
@@ -182,6 +219,7 @@ view.renderClock(new Date(), settings.clock24h);
 // ---------- Screen: wake lock and full screen ----------
 
 async function keepAwake() {
+  if (NATIVE) return; // the Android app keeps the screen on by itself
   try {
     if ('wakeLock' in navigator && document.visibilityState === 'visible') await navigator.wakeLock.request('screen');
   } catch {
@@ -234,6 +272,7 @@ $('btn-settings').addEventListener('click', () => {
 function updateSettings(next) {
   settings = next;
   if (ble) ble.settings = settings;
+  telemetry.ctrl.waitText = NATIVE ? 'SEARCHING FOR CONTROLLER…' : 'CONTROLLER OFF OR OUT OF RANGE';
   if (ctrlSource) ctrlSource.settings = settings;
   saveSettings(settings);
   applyTheme();
@@ -258,10 +297,49 @@ $('btn-disconnect').addEventListener('click', () => {
 
 $('btn-forget').addEventListener('click', async () => {
   $('settings').close('cancel');
+  if (NATIVE) return openChooser();
   await ble?.forget();
   toast('Controller forgotten');
   showStart(null);
 });
+
+// Android app: list nearby Bluetooth devices so a controller with an unknown name can be picked.
+// The chosen name is saved, and from then on the app connects to it automatically.
+async function openChooser() {
+  const list = $('chooser-list');
+  list.replaceChildren();
+  const seen = new Map();
+  $('chooser').showModal();
+  const stop = await ble.chooseFromScan(({ name, rssi }) => {
+    if (!name || !$('chooser').open) return;
+    let item = seen.get(name);
+    if (!item) {
+      item = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chooser-item';
+      btn.addEventListener('click', () => {
+        $('chooser').close();
+        updateSettings({ ...settings, controllerName: name });
+        logLink(`Controller chosen from list: "${name}"`);
+        toast(`Will connect to ${name} automatically`);
+        setCtrlSource(ble);
+        ble.disconnect();
+        $('start').hidden = true;
+        ble.start();
+      });
+      item.append(btn);
+      seen.set(name, item);
+      list.append(item);
+    }
+    item.firstChild.textContent = `${name}   ${rssi ?? ''} dBm`;
+  });
+  $('chooser').addEventListener('close', () => {
+    stop();
+    if (ble.status === 'connected') ble.stopScan(); // the list's scan is no longer needed
+    else ble.kick();
+  }, { once: true });
+}
 
 $('btn-copy-flag').addEventListener('click', async () => {
   try {
@@ -328,7 +406,14 @@ $('btn-details').addEventListener('click', () => {
   $('link-log').scrollTop = $('link-log').scrollHeight;
 });
 $('btn-connect').addEventListener('click', () => connectController());
-$('btn-reconnect').addEventListener('click', () => connectController());
+$('btn-reconnect').addEventListener('click', () => {
+  if (NATIVE) {
+    NATIVE_FIXES[ble.problem]?.run().catch?.(() => {});
+    setTimeout(() => ble.kick(), 1500);
+  } else {
+    connectController();
+  }
+});
 $('btn-connect-all').addEventListener('click', () => connectController({ showAll: true }));
 $('link-ctrl').addEventListener('click', () => {
   if (ctrlSource === ble && ble?.device && ble.status !== 'disconnected') {
@@ -346,7 +431,12 @@ $('btn-demo').addEventListener('click', startDemo);
 // ---------- Versions and updates ----------
 
 // Drops every cached file and reloads, so the newest version is fetched from GitHub.
+// The Android app instead opens the release page, where the newest APK can be installed.
 async function updateApp() {
+  if (NATIVE) {
+    location.href = RELEASES_URL;
+    return;
+  }
   toast('Updating…', 0);
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
@@ -365,6 +455,22 @@ function showVersion() {
 
 // Settings card: whether Chrome supports restoring devices, and what is remembered.
 function showAutoConnectStatus() {
+  $('android-app-link').hidden = NATIVE;
+  if (NATIVE) {
+    const status = $('autoconnect-status');
+    status.textContent = '✓ Android app: connects by itself whenever the controller is powered on';
+    status.toggleAttribute('data-ok', true);
+    $('autoconnect-steps').hidden = true;
+    const remembered = FardriverNative.rememberedName;
+    const custom = settings.controllerName?.trim();
+    $('autoconnect-detail').hidden = false;
+    $('autoconnect-detail').innerHTML = custom
+      ? `Looking for devices named <b>${custom.replace(/[<>&]/g, '')}…</b> (set under Connection).`
+      : remembered
+        ? `Last controller: <b>${remembered.replace(/[<>&]/g, '')}</b>. Use <b>Choose controller</b> to pick a different one.`
+        : 'Looks for any Fardriver controller (names starting YuanQu or FarDriver).';
+    return;
+  }
   const supported = FardriverBle.canRestore;
   const remembered = FardriverBle.rememberedName;
   const status = $('autoconnect-status');
@@ -393,7 +499,7 @@ function renderLog() {
 
 $('btn-copy-log').addEventListener('click', async () => {
   const header = `eMoto Dash v${APP_VERSION} | ${navigator.userAgent}\n`
-    + `canRestore=${FardriverBle.canRestore} watchAdvertisements=${'watchAdvertisements' in (globalThis.BluetoothDevice?.prototype ?? {})} `
+    + `native=${NATIVE} problem=${ble?.problem ?? '-'} canRestore=${canAutoConnect()} watchAdvertisements=${'watchAdvertisements' in (globalThis.BluetoothDevice?.prototype ?? {})} `
     + `status=${telemetry.ctrl.status} settings: autoConnectOnLaunch=${settings.autoConnectOnLaunch} autoReconnect=${settings.autoReconnect}\n\n`;
   try {
     await navigator.clipboard.writeText(header + formatLinkLog());
@@ -427,13 +533,19 @@ function checkVersionConsistency() {
 
 // ---------- Startup ----------
 
-logLink(`App opened (v${APP_VERSION}, ${FardriverBle.canRestore ? 'auto-connect supported' : 'auto-connect needs Chrome flag'})`);
+logLink(`App opened (v${APP_VERSION}, ${NATIVE ? 'Android app' : FardriverBle.canRestore ? 'web, auto-connect supported' : 'web, auto-connect needs Chrome flag'})`);
 applyTheme();
+telemetry.ctrl.waitText = NATIVE ? 'SEARCHING FOR CONTROLLER…' : 'CONTROLLER OFF OR OUT OF RANGE';
+if (NATIVE) {
+  document.body.classList.add('native');
+  $('btn-connect-all').textContent = 'Choose controller from a list';
+  $('btn-forget').textContent = 'Choose controller';
+}
 if (!ble) {
   $('btn-connect').disabled = true;
   $('btn-connect-all').disabled = true;
   $('bt-unsupported').hidden = false;
-} else if (!FardriverBle.canRestore) {
+} else if (!canAutoConnect()) {
   $('restore-hint').hidden = false;
 }
 if (params.has('demo')) startDemo();
@@ -442,7 +554,7 @@ else tryRestore();
 showVersion();
 checkVersionConsistency();
 
-if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !params.has('nosw')) {
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http') && !params.has('nosw')) {
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch(() => {});
   // A new version took over: reload straight away unless that would interrupt a ride.

@@ -1,6 +1,6 @@
 // Offline cache for the app shell, so the dash starts without mobile data.
 // Bump VERSION whenever files change so phones pick up the update.
-const VERSION = 'emoto-dash-v0.5.0';
+const VERSION = 'emoto-dash-v0.6.0';
 const FILES = [
   './',
   'index.html',
@@ -16,6 +16,7 @@ const FILES = [
   'js/store.js',
   'js/protocol/fardriver.js',
   'js/sources/fardriver-ble.js',
+  'js/sources/fardriver-native.js',
   'js/sources/demo.js',
   'js/sources/bms.js',
   'js/ui/dash.js',

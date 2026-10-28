@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="app-version" content="0.5.0">
+  <meta name="app-version" content="0.6.0">
   <title>eMoto Dash</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -113,6 +113,8 @@
           <h3>Auto-connect when the app opens</h3>
           <p class="setup-status" id="autoconnect-status"></p>
           <p class="setup-detail" id="autoconnect-detail"></p>
+          <p class="setup-detail" id="android-app-link">Want it to connect by itself at every key-on? Your controller changes its
+            Bluetooth address at each power-up, which only the <a href="https://github.com/theabstractpyro/emoto-dash/releases/latest/download/emoto-dash.apk">Android app (APK download)</a> can follow.</p>
           <div id="autoconnect-steps">
             <ol>
               <li>Tap <b>Copy Chrome setting link</b> below.</li>
@@ -154,6 +156,20 @@
           </span>
         </div>
         <pre class="link-log" id="link-log"></pre>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="chooser">
+    <form method="dialog">
+      <header class="sheet-head">
+        <h2>Choose controller</h2>
+        <button class="big-btn" value="close">Close</button>
+      </header>
+      <div class="sheet-body">
+        <p class="hint">Nearby Bluetooth devices, refreshed as they are found. Turn the key on, then tap your controller.
+          The app remembers its name and connects to it automatically from then on.</p>
+        <ul class="chooser-list" id="chooser-list"></ul>
       </div>
     </form>
   </dialog>

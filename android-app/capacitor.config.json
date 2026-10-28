@@ -1,0 +1,8 @@
+{
+  "appId": "io.github.theabstractpyro.emotodash",
+  "appName": "eMoto Dash",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#000000"
+  }
+}

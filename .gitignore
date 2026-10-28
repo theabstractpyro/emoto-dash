@@ -1,3 +1,9 @@
 node_modules/
 .DS_Store
 Thumbs.db
+android-app/www/
+android-app/android/
+android-app/package-lock.json
+*.p12
+*.jks
+*.keystore
