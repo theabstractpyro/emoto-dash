@@ -25,9 +25,15 @@ export const SCHEMA = [
   { group: 'Temperatures', key: 'ctrlWarnC', label: 'Controller warning', unit: '°C', type: 'number', min: 30, max: 150, step: 1, default: 70 },
   { group: 'Temperatures', key: 'ctrlHotC', label: 'Controller critical', unit: '°C', type: 'number', min: 30, max: 150, step: 1, default: 85 },
 
+  { group: 'Indicators', key: 'showRegen', label: 'Show REGEN light', type: 'checkbox', default: true },
+  { group: 'Indicators', key: 'showBrake', label: 'Show BRAKE light', type: 'checkbox', default: true },
+  { group: 'Indicators', key: 'showCruise', label: 'Show CRUISE light (needs a cruise button)', type: 'checkbox', default: false },
+  { group: 'Indicators', key: 'showBoost', label: 'Show BOOST light (needs a boost button)', type: 'checkbox', default: false },
+
   { group: 'Display', key: 'clock24h', label: '24-hour clock', type: 'checkbox', default: false },
   { group: 'Display', key: 'theme', label: 'Theme', type: 'select', options: [['night', 'Night (dark)'], ['day', 'Day (high contrast)']], default: 'night' },
 
+  { group: 'Connection', key: 'controllerName', label: 'Controller name starts with (blank = detect automatically)', type: 'text', default: '', placeholder: 'e.g. YuanQu' },
   { group: 'Connection', key: 'keepAlive', label: 'Send keep-alive packets (as the official app does)', type: 'checkbox', default: true },
   { group: 'Connection', key: 'autoReconnect', label: 'Reconnect automatically', type: 'checkbox', default: true },
 ];

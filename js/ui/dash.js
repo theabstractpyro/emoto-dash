@@ -66,6 +66,10 @@ export class DashView {
     setAttr(e['tt-brake'], 'data-on', d.brake);
     setAttr(e['tt-cruise'], 'data-on', d.cruise);
     setAttr(e['tt-boost'], 'data-on', d.boost);
+    e['tt-regen'].hidden = !s.showRegen;
+    e['tt-brake'].hidden = !s.showBrake;
+    e['tt-cruise'].hidden = !s.showCruise;
+    e['tt-boost'].hidden = !s.showBoost;
 
     // Power
     const step = s.maxPowerKw <= 6 ? 1 : s.maxPowerKw <= 12 ? 2 : s.maxPowerKw <= 30 ? 5 : 10;

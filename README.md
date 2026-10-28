@@ -59,13 +59,30 @@ Open **Settings** (gear icon):
    compares GPS speed with RPM-derived speed and stores the correction factor.
 5. **Ride modes**: rename switch positions 1–3 to match your bike, e.g. ECO / CITY / SPORT.
 
-Then tap **Connect controller** and pick it from Chrome's list. Its Bluetooth name was not in the
-captured logs, so all nearby devices are listed. Use the full-screen button (⛶) when mounted. It also
-locks the current orientation, and the screen is kept awake while connected.
+Then tap **Connect controller** and pick it from Chrome's list. The list only shows controllers:
+names starting with *YuanQu* (Fardriver's Chinese brand name, e.g. `YuanQuFOC568`) or *FarDriver*,
+plus anything advertising the controller's Bluetooth service. If yours has a different name, tap
+**Controller not listed? Show all devices**, or enter the start of its name under
+*Settings → Connection*. Use the full-screen button (⛶) when mounted. It also locks the current
+orientation, and the screen is kept awake while connected.
 
-Chrome may make you pick the controller again on every launch. If so, enable
-`chrome://flags/#enable-web-bluetooth-new-permissions-backend`, which lets the app reconnect to the
-remembered device on its own. Mid-ride dropouts are reconnected automatically either way.
+### Automatic connection
+
+Once picked, the controller is remembered:
+
+- **Key off → key on:** the dash shows *WAITING FOR CONTROLLER…* and connects by itself as soon as
+  the controller powers up. No tapping needed.
+- **Opening the app:** this needs one Chrome setting. Open
+  `chrome://flags/#enable-web-bluetooth-new-permissions-backend`, set it to **Enabled** and restart
+  Chrome. The app then reconnects to the remembered controller at launch, and waits for it if the
+  key is off. Without the flag, Chrome makes you pick the controller once per app launch. The start
+  screen shows a reminder while the flag is off, and Diagnostics shows whether it is active.
+- Tapping the **CTRL** pill retries immediately. *Settings → Forget controller* clears the remembered device.
+
+### Indicators
+
+*Settings → Indicators* turns each tell-tale on or off. REGEN and BRAKE are on by default. CRUISE and
+BOOST are off, because they only light up if those buttons are wired to the controller.
 
 Try **Demo ride** first to see everything move without the bike. The demo generates genuine
 controller frames, so it exercises the real decoder.

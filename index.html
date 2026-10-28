@@ -14,7 +14,7 @@
   <main class="dash" id="dash" aria-live="off">
     <header class="topbar">
       <div class="links">
-        <span class="link" id="link-ctrl" data-state="off"><i></i>CTRL</span>
+        <button class="link" id="link-ctrl" data-state="off" aria-label="Controller connection"><i></i>CTRL</button>
         <span class="link" id="link-bms" data-state="absent"><i></i>BMS</span>
         <span class="demo-tag" id="demo-tag" hidden>DEMO</span>
       </div>
@@ -88,8 +88,11 @@
       <h1>eMoto Dash</h1>
       <p class="start-msg" id="start-msg">Connect to your Fardriver controller over Bluetooth.</p>
       <button class="big-btn primary" id="btn-connect">Connect controller</button>
+      <button class="big-btn" id="btn-connect-all">Controller not listed? Show all devices</button>
       <button class="big-btn" id="btn-demo">Demo ride</button>
       <p class="fine" id="bt-unsupported" hidden>This browser has no Web Bluetooth. Use Chrome on Android, served over HTTPS.</p>
+      <p class="hint" id="restore-hint" hidden>Tip: to connect automatically every time the app opens, enable
+        <b>chrome://flags/#enable-web-bluetooth-new-permissions-backend</b> in Chrome and restart it.</p>
     </div>
   </div>
 
@@ -107,6 +110,7 @@
         <button type="button" class="big-btn" id="btn-calibrate">Calibrate speed with GPS</button>
         <button type="button" class="big-btn" id="btn-reset-trip">Reset trip</button>
         <button type="button" class="big-btn" id="btn-disconnect">Disconnect</button>
+        <button type="button" class="big-btn" id="btn-forget">Forget controller</button>
       </div>
     </form>
   </dialog>

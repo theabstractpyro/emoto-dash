@@ -13,6 +13,7 @@ const CAPTURE = fileURLToPath(new URL('../../FARDRIVER REVERSE ENGINEERING/analy
 test('replaying the recorded session raises no false alerts', { skip: !existsSync(CAPTURE) && 'capture not present' }, () => {
   const t = createTelemetry();
   t.ctrl.everConnected = true;
+  t.ctrl.status = 'connected';
   const notifications = readFileSync(CAPTURE, 'utf8').trim().split('\n').map(JSON.parse).filter((r) => r.op === 0x1b);
   let now = 0;
   const mosTemps = new Set();
@@ -64,9 +65,12 @@ test('derive: power, regen, mode flags and staleness', () => {
   close(d.rangeKm / 1.609344, 24, 1e-6);
   assert.deepEqual(d.alerts.map((a) => a.text), ['MOTOR HOT']);
 
+  t.ctrl.status = 'connected';
   const stale = derive(t, DEFAULTS, newTrip(), 5000);
   assert.equal(stale.speedKmh, null);
   assert.equal(stale.alerts[0].text, 'CONTROLLER SIGNAL LOST');
+  t.ctrl.status = 'reconnecting'; // key off: link dropped, app waiting for power-up
+  assert.deepEqual(derive(t, DEFAULTS, newTrip(), 5000).alerts[0], { level: 'info', text: 'WAITING FOR CONTROLLER…' });
 });
 
 test('fresh BMS values take priority over controller estimates', () => {

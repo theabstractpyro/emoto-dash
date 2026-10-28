@@ -17,7 +17,10 @@ const telemetry = createTelemetry();
 const view = new DashView();
 const ble = FardriverBle.supported ? new FardriverBle(settings) : null;
 let ctrlSource = null;
-const linkStats = { name: '–', fps: 0, frames: 0, dropped: 0 };
+const linkStats = {
+  name: '–', fps: 0, frames: 0, dropped: 0, attempts: 0, lastError: '', reconnectMethod: '–',
+  canRestore: FardriverBle.canRestore,
+};
 let framesThisSecond = 0;
 
 // ---------- Theme ----------
@@ -70,28 +73,39 @@ function startDemo() {
   demo.start();
 }
 
-async function connectController() {
+async function connectController({ showAll = false } = {}) {
   if (!ble) return;
   setCtrlSource(ble);
   $('start-msg').textContent = 'Choose your controller in the list…';
   try {
-    await ble.pick();
+    await ble.pick({ showAll });
   } catch (err) {
-    if (err.name === 'NotFoundError') showStart(null);
-    else showStart(`Could not connect: ${err.message}`);
+    if (err.name === 'NotFoundError') {
+      showStart(null); // chooser cancelled, or no matching device in range
+    } else if (ble.status === 'reconnecting') {
+      // Picked, but it is not answering yet (e.g. key off): the dash waits and connects on power-up.
+      $('start').hidden = true;
+      toast('Controller remembered. It will connect as soon as it powers on.');
+    } else {
+      showStart(`Could not connect: ${err.message}`);
+    }
   }
 }
 
+// At launch, reattach to the remembered controller (Chrome permitting) and wait for it to power on.
 async function tryRestore() {
   if (!ble) return;
   setCtrlSource(ble);
-  $('start-msg').textContent = 'Reconnecting to your controller…';
   try {
-    if (!(await ble.restore())) showStart(null);
-  } catch {
-    // restore() keeps retrying in the background; the chooser stays available meanwhile.
-    showStart('Controller not found yet, still trying… or pick it again.');
+    if (await ble.restore()) {
+      $('start').hidden = true;
+      keepAwake();
+      return;
+    }
+  } catch (err) {
+    console.warn('Restore failed', err);
   }
+  showStart(null);
 }
 
 function showStart(message) {
@@ -141,6 +155,9 @@ setInterval(() => {
   linkStats.name = ctrlSource?.name ?? '–';
   linkStats.frames = ctrlSource?.parser?.frames ?? 0;
   linkStats.dropped = ctrlSource?.parser?.dropped ?? 0;
+  linkStats.attempts = ctrlSource?.attempts ?? 0;
+  linkStats.lastError = ctrlSource?.lastError ?? '';
+  linkStats.reconnectMethod = ctrlSource?.reconnectMethod ?? '–';
   view.renderClock(new Date(), settings.clock24h);
 }, 1000);
 view.renderClock(new Date(), settings.clock24h);
@@ -156,7 +173,9 @@ async function keepAwake() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && telemetry.ctrl.status !== 'disconnected') keepAwake();
+  if (document.visibilityState !== 'visible' || telemetry.ctrl.status === 'disconnected') return;
+  keepAwake();
+  ble?.kick(); // timers may have been paused while the screen was off
 });
 
 async function toggleFullscreen() {
@@ -218,6 +237,13 @@ $('btn-disconnect').addEventListener('click', () => {
   ctrlSource?.disconnect();
 });
 
+$('btn-forget').addEventListener('click', async () => {
+  $('settings').close('cancel');
+  await ble?.forget();
+  toast('Controller forgotten');
+  showStart(null);
+});
+
 $('btn-calibrate').addEventListener('click', () => {
   $('settings').close('cancel');
   calibrateWithGps();
@@ -267,7 +293,19 @@ $('btn-details').addEventListener('click', () => {
   renderDetails($('details-table'), telemetry, linkStats);
   $('details').showModal();
 });
-$('btn-connect').addEventListener('click', connectController);
+$('btn-connect').addEventListener('click', () => connectController());
+$('btn-connect-all').addEventListener('click', () => connectController({ showAll: true }));
+$('link-ctrl').addEventListener('click', () => {
+  if (ctrlSource === ble && ble?.device && ble.status !== 'disconnected') {
+    if (ble.status === 'connected') $('btn-details').click();
+    else {
+      ble.kick();
+      toast('Looking for the controller…');
+    }
+  } else if (!(ctrlSource instanceof DemoSource)) {
+    showStart(null);
+  }
+});
 $('btn-demo').addEventListener('click', startDemo);
 
 // ---------- Startup ----------
@@ -275,7 +313,10 @@ $('btn-demo').addEventListener('click', startDemo);
 applyTheme();
 if (!ble) {
   $('btn-connect').disabled = true;
+  $('btn-connect-all').disabled = true;
   $('bt-unsupported').hidden = false;
+} else if (!FardriverBle.canRestore) {
+  $('restore-hint').hidden = false;
 }
 if (params.has('demo')) startDemo();
 else tryRestore();

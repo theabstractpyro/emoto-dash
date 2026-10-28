@@ -155,7 +155,12 @@ function buildAlerts(t, d) {
   if (d.faults.length) alerts.push({ level: 'danger', text: d.faults.join(' · ') });
   if (d.motorTempLevel === 'hot') alerts.push({ level: 'danger', text: 'MOTOR TEMP CRITICAL' });
   if (d.ctrlTempLevel === 'hot') alerts.push({ level: 'danger', text: 'CONTROLLER TEMP CRITICAL' });
-  if (t.ctrl.everConnected && !d.ctrlFresh) alerts.push({ level: 'warn', text: 'CONTROLLER SIGNAL LOST' });
+  if (!d.ctrlFresh) {
+    const status = t.ctrl.status;
+    // Key off cuts the controller's power, so a dropped link while parked is normal: say so calmly.
+    if (status === 'reconnecting' || status === 'connecting') alerts.push({ level: 'info', text: 'WAITING FOR CONTROLLER…' });
+    else if (status === 'connected' && t.ctrl.everConnected) alerts.push({ level: 'warn', text: 'CONTROLLER SIGNAL LOST' });
+  }
   if (d.soc != null && d.soc < 8) alerts.push({ level: 'danger', text: 'BATTERY CRITICAL' });
   else if (d.soc != null && d.soc < 15) alerts.push({ level: 'warn', text: 'BATTERY LOW' });
   if (d.motorTempLevel === 'warn') alerts.push({ level: 'warn', text: 'MOTOR HOT' });

@@ -31,6 +31,7 @@ export function buildSettingsForm(container) {
       }
     }
     input.name = f.key;
+    if (f.placeholder) input.placeholder = f.placeholder;
     const control = document.createElement('span');
     control.append(input);
     if (f.unit) {
@@ -96,7 +97,9 @@ export function renderDetails(table, telemetry, linkStats) {
   const rows = [['CONTROLLER'], ...CTRL_ROWS.map(([k, fn]) => [k, fn(c)])];
   rows.push(['LINK'], ['Source', linkStats.name], ['Status', telemetry.ctrl.status],
     ['Frames / s', linkStats.fps.toFixed(1)], ['Frames total', String(linkStats.frames)],
-    ['Bytes discarded', String(linkStats.dropped)]);
+    ['Bytes discarded', String(linkStats.dropped)], ['Connect attempts', String(linkStats.attempts)],
+    ['Last link error', linkStats.lastError || 'none'], ['Reconnect method', linkStats.reconnectMethod],
+    ['Auto-connect at app start', linkStats.canRestore ? 'supported' : 'needs Chrome flag (see README)']);
   const b = telemetry.bms.values;
   if (Object.keys(b).length) {
     rows.push(['BMS'], ...Object.entries(b).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)]));

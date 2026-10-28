@@ -115,6 +115,10 @@ html, body {
 .links { display: flex; gap: 6px; align-items: center; }
 
 .link {
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -157,6 +161,7 @@ html, body {
 }
 .banner[data-level="danger"] { background: var(--danger); color: var(--on-danger); animation: pulse 1.2s ease-in-out infinite; }
 .banner[data-level="warn"] { background: var(--warn); color: #000; }
+.banner[data-level="info"] { background: var(--off); color: var(--text); font-weight: 700; }
 .clock { margin-left: auto; }
 .banner:not([hidden]) + .clock { margin-left: 0; }
 
@@ -399,6 +404,8 @@ html, body {
 .start-card h1 { margin: 0; font-size: 30px; letter-spacing: 0.04em; }
 .start-msg { margin: 0 0 6px; color: var(--dim); font-size: 16px; line-height: 1.4; }
 .fine { margin: 0; color: var(--warn); font-size: 14px; line-height: 1.4; }
+.hint { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.45; user-select: text; overflow-wrap: anywhere; }
+.hint b { color: var(--text); }
 
 .big-btn {
   min-height: 52px;
