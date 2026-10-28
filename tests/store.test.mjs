@@ -70,7 +70,7 @@ test('derive: power, regen, mode flags and staleness', () => {
   assert.equal(stale.speedKmh, null);
   assert.equal(stale.alerts[0].text, 'CONTROLLER SIGNAL LOST');
   t.ctrl.status = 'reconnecting'; // key off: link dropped, app waiting for power-up
-  assert.deepEqual(derive(t, DEFAULTS, newTrip(), 5000).alerts[0], { level: 'info', text: 'WAITING FOR CONTROLLER…' });
+  assert.deepEqual(derive(t, DEFAULTS, newTrip(), 5000).alerts[0], { level: 'info', text: 'CONTROLLER OFF OR OUT OF RANGE' });
 });
 
 test('fresh BMS values take priority over controller estimates', () => {

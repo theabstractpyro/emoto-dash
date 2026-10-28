@@ -155,3 +155,22 @@ test('launch restore finds the controller even when its saved id is stale', asyn
     delete globalThis.localStorage;
   }
 });
+
+test('picking a controller forgets its old addresses but never the BMS', async () => {
+  const forgotten = [];
+  const entry = (id, name) => ({ id, name, forget: async () => forgotten.push(name) });
+  const current = entry('new', 'YuanQuFOC568');
+  const devices = [
+    current,
+    entry('old1', 'YuanQuFOC568'),
+    entry('old2', 'Unknown or Unsupported Device (C0:0D:64:3A:00:D9)'),
+    entry('bms', 'ANT-BLE20PHUB'),
+  ];
+  Object.defineProperty(globalThis.navigator, 'bluetooth', { value: { getDevices: async () => devices }, configurable: true });
+  try {
+    await new FardriverBle(settings, fast).forgetStaleControllers(current);
+    assert.deepEqual(forgotten, ['YuanQuFOC568', 'Unknown or Unsupported Device (C0:0D:64:3A:00:D9)']);
+  } finally {
+    delete globalThis.navigator.bluetooth;
+  }
+});

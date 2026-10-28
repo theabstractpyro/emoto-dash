@@ -153,6 +153,8 @@ function tick() {
     ctrl: linkState(telemetry.ctrl, d.ctrlFresh),
     bms: linkState(telemetry.bms, d.bmsFresh),
   });
+  const st = telemetry.ctrl.status;
+  $('btn-reconnect').hidden = !(ctrlSource === ble && ble && !d.ctrlFresh && (st === 'reconnecting' || st === 'connecting'));
   if ($('details').open) {
     renderDetails($('details-table'), telemetry, linkStats);
     renderLog();
@@ -326,6 +328,7 @@ $('btn-details').addEventListener('click', () => {
   $('link-log').scrollTop = $('link-log').scrollHeight;
 });
 $('btn-connect').addEventListener('click', () => connectController());
+$('btn-reconnect').addEventListener('click', () => connectController());
 $('btn-connect-all').addEventListener('click', () => connectController({ showAll: true }));
 $('link-ctrl').addEventListener('click', () => {
   if (ctrlSource === ble && ble?.device && ble.status !== 'disconnected') {

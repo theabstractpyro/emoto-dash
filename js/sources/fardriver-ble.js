@@ -131,6 +131,7 @@ export class FardriverBle extends EventTarget {
     logLink(`Picked "${device.name || '?'}" (id ${device.id.slice(0, 8)}…)`);
     storageSet(DEVICE_KEY, device.id);
     storageSet(NAME_KEY, device.name || '');
+    this.forgetStaleControllers(device);
     await this.attach(device);
   }
 
@@ -165,6 +166,28 @@ export class FardriverBle extends EventTarget {
     logLink(`Launch: restoring "${device.name || '?'}"`);
     this.attach(device).catch(() => {}); // a powered-off controller is expected here; keep retrying
     return true;
+  }
+
+  // The controller takes a new Bluetooth address at every power-up, so each pick leaves the
+  // previous one behind in Chrome's remembered list. Drop those so the list stays clean.
+  async forgetStaleControllers(keep) {
+    if (typeof navigator.bluetooth?.getDevices !== 'function') return;
+    try {
+      const devices = await navigator.bluetooth.getDevices();
+      let removed = 0;
+      for (const d of devices) {
+        if (d.id === keep.id || typeof d.forget !== 'function') continue;
+        const name = d.name || '';
+        const stale = !name || name.startsWith('Unknown or Unsupported Device')
+          || CONTROLLER_NAME_PREFIXES.some((p) => name.startsWith(p));
+        if (!stale) continue;
+        await d.forget();
+        removed++;
+      }
+      if (removed) logLink(`Removed ${removed} old controller entr${removed === 1 ? 'y' : 'ies'} from Chrome's list`);
+    } catch (err) {
+      logLink(`Could not tidy remembered devices: ${err?.message || err}`);
+    }
   }
 
   async forget() {

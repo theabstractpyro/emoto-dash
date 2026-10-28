@@ -206,6 +206,25 @@ html, body {
   padding-bottom: 3cqh;
 }
 
+/* Shown over the speed while the controller is off: its Bluetooth address changes at every
+   power-up, so Chrome needs one tap in its chooser to connect to the new one. */
+.reconnect-btn {
+  position: absolute;
+  inset: 12% 8%;
+  z-index: 2;
+  border-radius: 18px;
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--accent);
+  font: inherit;
+  font-size: max(18px, min(11cqh, 9cqw));
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.reconnect-btn:active { background: var(--accent); color: #000; }
+.reconnect-btn[hidden] { display: none; }
+
 .speed-value {
   font-size: min(54cqh, 46cqw);
   line-height: 0.82;

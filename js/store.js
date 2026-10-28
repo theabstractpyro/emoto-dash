@@ -158,7 +158,7 @@ function buildAlerts(t, d) {
   if (!d.ctrlFresh) {
     const status = t.ctrl.status;
     // Key off cuts the controller's power, so a dropped link while parked is normal: say so calmly.
-    if (status === 'reconnecting' || status === 'connecting') alerts.push({ level: 'info', text: 'WAITING FOR CONTROLLER…' });
+    if (status === 'reconnecting' || status === 'connecting') alerts.push({ level: 'info', text: 'CONTROLLER OFF OR OUT OF RANGE' });
     else if (status === 'connected' && t.ctrl.everConnected) alerts.push({ level: 'warn', text: 'CONTROLLER SIGNAL LOST' });
   }
   if (d.soc != null && d.soc < 8) alerts.push({ level: 'danger', text: 'BATTERY CRITICAL' });
