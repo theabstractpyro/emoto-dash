@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="app-version" content="0.3.0">
   <title>eMoto Dash</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -91,8 +92,9 @@
       <button class="big-btn" id="btn-connect-all">Controller not listed? Show all devices</button>
       <button class="big-btn" id="btn-demo">Demo ride</button>
       <p class="fine" id="bt-unsupported" hidden>This browser has no Web Bluetooth. Use Chrome on Android, served over HTTPS.</p>
-      <p class="hint" id="restore-hint" hidden>Tip: to connect automatically every time the app opens, enable
-        <b>chrome://flags/#enable-web-bluetooth-new-permissions-backend</b> in Chrome and restart it.</p>
+      <p class="hint" id="restore-hint" hidden>Tip: the app can connect automatically every time it opens.
+        Set it up under <b>Settings → Auto-connect when the app opens</b>.</p>
+      <p class="version" id="version-start"></p>
     </div>
   </div>
 
@@ -105,8 +107,27 @@
           <button class="big-btn primary" value="save" id="settings-save">Save</button>
         </span>
       </header>
-      <div class="sheet-body" id="settings-fields"></div>
+      <div class="sheet-body">
+        <section class="setup-card" id="autoconnect-card">
+          <h3>Auto-connect when the app opens</h3>
+          <p class="setup-status" id="autoconnect-status"></p>
+          <div id="autoconnect-steps">
+            <ol>
+              <li>Tap <b>Copy Chrome setting link</b> below.</li>
+              <li>Open a new Chrome tab, paste it into the address bar and press Enter.</li>
+              <li>Set <b>Use the new permissions backend for Web Bluetooth</b> to <b>Enabled</b>.</li>
+              <li>Tap <b>Relaunch</b> at the bottom of Chrome, then reopen eMoto Dash.</li>
+            </ol>
+            <code class="flag-url">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
+            <button type="button" class="big-btn primary" id="btn-copy-flag">Copy Chrome setting link</button>
+            <p class="hint">Chrome does not allow web pages to open chrome:// settings directly, so the link has to be pasted.</p>
+          </div>
+        </section>
+        <div id="settings-fields"></div>
+        <p class="version" id="version-settings"></p>
+      </div>
       <div class="sheet-actions">
+        <button type="button" class="big-btn" id="btn-update">Update app</button>
         <button type="button" class="big-btn" id="btn-calibrate">Calibrate speed with GPS</button>
         <button type="button" class="big-btn" id="btn-reset-trip">Reset trip</button>
         <button type="button" class="big-btn" id="btn-disconnect">Disconnect</button>

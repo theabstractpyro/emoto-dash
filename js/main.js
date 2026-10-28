@@ -6,6 +6,7 @@ import {
 import { FardriverBle } from './sources/fardriver-ble.js';
 import { DemoSource } from './sources/demo.js';
 import { DashView } from './ui/dash.js';
+import { APP_VERSION } from './version.js';
 import { buildSettingsForm, fillSettingsForm, readSettingsForm, renderDetails } from './ui/panels.js';
 
 const params = new URLSearchParams(location.search);
@@ -19,8 +20,9 @@ const ble = FardriverBle.supported ? new FardriverBle(settings) : null;
 let ctrlSource = null;
 const linkStats = {
   name: '–', fps: 0, frames: 0, dropped: 0, attempts: 0, lastError: '', reconnectMethod: '–',
-  canRestore: FardriverBle.canRestore,
+  canRestore: FardriverBle.canRestore, appVersion: APP_VERSION,
 };
+const CHROME_FLAG_URL = 'chrome://flags/#enable-web-bluetooth-new-permissions-backend';
 let framesThisSecond = 0;
 
 // ---------- Theme ----------
@@ -244,6 +246,19 @@ $('btn-forget').addEventListener('click', async () => {
   showStart(null);
 });
 
+$('btn-copy-flag').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(CHROME_FLAG_URL);
+    toast("Copied. Paste it into Chrome's address bar.", 5000);
+  } catch {
+    // Clipboard blocked: select the text so a long-press copies it.
+    getSelection().selectAllChildren(document.querySelector('.flag-url'));
+    toast('Long-press the highlighted link and choose Copy', 5000);
+  }
+});
+
+$('btn-update').addEventListener('click', () => updateApp());
+
 $('btn-calibrate').addEventListener('click', () => {
   $('settings').close('cancel');
   calibrateWithGps();
@@ -308,6 +323,49 @@ $('link-ctrl').addEventListener('click', () => {
 });
 $('btn-demo').addEventListener('click', startDemo);
 
+// ---------- Versions and updates ----------
+
+// Drops every cached file and reloads, so the newest version is fetched from GitHub.
+async function updateApp() {
+  toast('Updating…', 0);
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    await reg?.update();
+    await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
+  } catch {
+    // A plain reload still fetches fresh files.
+  }
+  location.reload();
+}
+
+function showVersion() {
+  $('version-start').textContent = `Version ${APP_VERSION}`;
+  $('version-settings').textContent = `eMoto Dash v${APP_VERSION}`;
+  const ok = FardriverBle.canRestore;
+  const status = $('autoconnect-status');
+  status.textContent = ok
+    ? '✓ Enabled: the app reconnects to your controller whenever it opens.'
+    : 'Not set up yet: Chrome will ask you to pick the controller each time the app opens.';
+  status.toggleAttribute('data-ok', ok);
+  $('autoconnect-steps').hidden = ok;
+}
+
+// If the page and its scripts come from different releases (a partially cached update),
+// refresh once to bring everything to the same version.
+function checkVersionConsistency() {
+  const pageVersion = document.querySelector('meta[name="app-version"]')?.content;
+  if (!pageVersion || pageVersion === APP_VERSION) return;
+  let retried = false;
+  try {
+    retried = sessionStorage.getItem('emoto-dash.versionRetry') === pageVersion;
+    sessionStorage.setItem('emoto-dash.versionRetry', pageVersion);
+  } catch {
+    retried = true; // cannot guard against a reload loop, so don't auto-reload
+  }
+  if (!retried) updateApp();
+  else toast(`Update incomplete (page ${pageVersion}, scripts ${APP_VERSION}). Tap Settings → Update app.`, 8000);
+}
+
 // ---------- Startup ----------
 
 applyTheme();
@@ -321,6 +379,16 @@ if (!ble) {
 if (params.has('demo')) startDemo();
 else tryRestore();
 
+showVersion();
+checkVersionConsistency();
+
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !params.has('nosw')) {
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch(() => {});
+  // A new version took over: reload straight away unless that would interrupt a ride.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) return; // first install, nothing to refresh
+    if (telemetry.ctrl.status === 'connected') toast('App updated. The new version loads next time you open it.', 6000);
+    else location.reload();
+  });
 }

@@ -72,9 +72,10 @@ Once picked, the controller is remembered:
 
 - **Key off → key on:** the dash shows *WAITING FOR CONTROLLER…* and connects by itself as soon as
   the controller powers up. No tapping needed.
-- **Opening the app:** this needs one Chrome setting. Open
-  `chrome://flags/#enable-web-bluetooth-new-permissions-backend`, set it to **Enabled** and restart
-  Chrome. The app then reconnects to the remembered controller at launch, and waits for it if the
+- **Opening the app:** this needs one Chrome setting. *Settings → Auto-connect when the app opens*
+  walks through it, with a button that copies the link
+  `chrome://flags/#enable-web-bluetooth-new-permissions-backend` (Chrome won't let a web page open it
+  directly). Paste the link into Chrome, set it to **Enabled** and relaunch Chrome. The app then reconnects to the remembered controller at launch, and waits for it if the
   key is off. Without the flag, Chrome makes you pick the controller once per app launch. The start
   screen shows a reminder while the flag is off, and Diagnostics shows whether it is active.
 - Tapping the **CTRL** pill retries immediately. *Settings → Forget controller* clears the remembered device.
@@ -117,8 +118,16 @@ npm run serve            # static server on :8080
 # then open http://localhost:8080/preview.html for landscape + portrait phone frames in demo mode
 ```
 
+### Versions and updates
+
+The version is shown on the start screen, at the bottom of Settings and in Diagnostics. Phones
+pick up a new release the next time the app opens online, and the app reloads itself once the update
+is in (unless it's connected to the bike mid-ride). *Settings → Update app* forces a fresh download.
+For a release, bump the version in `js/version.js`, `sw.js`, `package.json` and the `app-version`
+meta tag in `index.html`. `npm test` fails if they disagree, or if `sw.js` is missing a file.
+
 URL options: `?demo=1` starts the demo, `&faults=1` simulates a fault, `&theme=day`, and `&nosw=1`
-skips the offline cache. After changing files, bump `VERSION` in `sw.js` so installed copies update.
+skips the offline cache.
 
 ```
 js/protocol/fardriver.js   frame parsing, checksums, decoding, fault names, command builder

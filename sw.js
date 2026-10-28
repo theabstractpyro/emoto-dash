@@ -1,6 +1,6 @@
 // Offline cache for the app shell, so the dash starts without mobile data.
 // Bump VERSION whenever files change so phones pick up the update.
-const VERSION = 'emoto-dash-v2';
+const VERSION = 'emoto-dash-v0.3.0';
 const FILES = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const FILES = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'js/main.js',
+  'js/version.js',
   'js/settings.js',
   'js/store.js',
   'js/protocol/fardriver.js',
@@ -22,7 +23,9 @@ const FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' bypasses the browser's HTTP cache, so a new version never stores old files.
+  const requests = FILES.map((f) => new Request(f, { cache: 'reload' }));
+  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(requests)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -34,15 +37,20 @@ self.addEventListener('activate', (event) => {
 });
 
 // Network first (so updates arrive when online), cache as the offline fallback.
+// GitHub Pages lets browsers reuse files for 10 minutes; 'no-cache' makes every request check
+// with the server, otherwise a fresh index.html could load alongside stale scripts.
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const req = event.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   event.respondWith(
-    fetch(event.request)
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then((res) => {
-        const copy = res.clone();
-        caches.open(VERSION).then((cache) => cache.put(event.request, copy));
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(VERSION).then((cache) => cache.put(req.url, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(event.request, { ignoreSearch: true })),
+      .catch(() => caches.match(req.url, { ignoreSearch: true })),
   );
 });

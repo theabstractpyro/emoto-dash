@@ -95,6 +95,7 @@ const CTRL_ROWS = [
 export function renderDetails(table, telemetry, linkStats) {
   const c = telemetry.ctrl.values;
   const rows = [['CONTROLLER'], ...CTRL_ROWS.map(([k, fn]) => [k, fn(c)])];
+  rows.push(['APP'], ['Version', linkStats.appVersion]);
   rows.push(['LINK'], ['Source', linkStats.name], ['Status', telemetry.ctrl.status],
     ['Frames / s', linkStats.fps.toFixed(1)], ['Frames total', String(linkStats.frames)],
     ['Bytes discarded', String(linkStats.dropped)], ['Connect attempts', String(linkStats.attempts)],

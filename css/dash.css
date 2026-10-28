@@ -406,6 +406,31 @@ html, body {
 .fine { margin: 0; color: var(--warn); font-size: 14px; line-height: 1.4; }
 .hint { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.45; user-select: text; overflow-wrap: anywhere; }
 .hint b { color: var(--text); }
+.version { margin: 4px 0 0; color: var(--dim); font-size: 12px; letter-spacing: 0.08em; text-align: center; }
+
+.setup-card {
+  margin: 12px 0 4px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.setup-card h3 { margin: 0 0 6px; font-size: 16px; }
+.setup-card ol { margin: 8px 0; padding-left: 22px; font-size: 15px; line-height: 1.5; }
+.setup-card .big-btn { width: 100%; margin: 8px 0 6px; }
+.setup-status { margin: 0; font-size: 15px; font-weight: 700; }
+.setup-status[data-ok] { color: var(--regen); }
+.setup-status:not([data-ok]) { color: var(--warn); }
+.flag-url {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
 
 .big-btn {
   min-height: 52px;
