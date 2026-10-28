@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="app-version" content="0.3.0">
+  <meta name="app-version" content="0.4.0">
   <title>eMoto Dash</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -111,6 +111,7 @@
         <section class="setup-card" id="autoconnect-card">
           <h3>Auto-connect when the app opens</h3>
           <p class="setup-status" id="autoconnect-status"></p>
+          <p class="setup-detail" id="autoconnect-detail"></p>
           <div id="autoconnect-steps">
             <ol>
               <li>Tap <b>Copy Chrome setting link</b> below.</li>
@@ -142,7 +143,17 @@
         <h2>Diagnostics</h2>
         <button class="big-btn primary" value="close">Close</button>
       </header>
-      <div class="sheet-body"><table class="details" id="details-table"></table></div>
+      <div class="sheet-body">
+        <table class="details" id="details-table"></table>
+        <div class="log-head">
+          <h3>CONNECTION LOG</h3>
+          <span class="head-btns">
+            <button type="button" class="big-btn" id="btn-clear-log">Clear</button>
+            <button type="button" class="big-btn primary" id="btn-copy-log">Copy log</button>
+          </span>
+        </div>
+        <pre class="link-log" id="link-log"></pre>
+      </div>
     </form>
   </dialog>
 

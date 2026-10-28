@@ -118,3 +118,40 @@ test('chooser filters find Fardriver names unless a custom prefix is set', () =>
   assert.ok(auto.some((f) => f.services?.includes(0xffe0)));
   assert.deepEqual(chooserFilters(' MyBike '), [{ namePrefix: 'MyBike' }]);
 });
+
+test('launch restore finds the controller even when its saved id is stale', async () => {
+  const store = new Map([['emoto-dash.ctrlDeviceId', 'old-id'], ['emoto-dash.ctrlDeviceName', 'YuanQuFOC568']]);
+  globalThis.localStorage = {
+    getItem: (k) => store.get(k) ?? null,
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+  };
+  const dev = new FakeController();
+  dev.id = 'new-id';
+  const bms = { id: 'bms-id', name: 'ANT-BLE20PHUB' };
+  let remembered = [bms, dev];
+  Object.defineProperty(globalThis.navigator, 'bluetooth', { value: { getDevices: async () => remembered }, configurable: true });
+  try {
+    assert.equal(FardriverBle.canRestore, true);
+
+    const ble = new FardriverBle(settings, fast);
+    assert.equal(await ble.restore(), true, 'matched by saved name');
+    await until(() => ble.status === 'connected');
+    assert.equal(store.get('emoto-dash.ctrlDeviceId'), 'new-id', 'saved id refreshed');
+    ble.disconnect();
+
+    store.clear();
+    const ble2 = new FardriverBle(settings, fast);
+    assert.equal(await ble2.restore(), true, 'lone Fardriver-named device used when nothing is saved');
+    await until(() => ble2.status === 'connected');
+    ble2.disconnect();
+
+    remembered = [bms];
+    assert.equal(await new FardriverBle(settings, fast).restore(), 'not-found', 'never connects to the BMS');
+    remembered = [];
+    assert.equal(await new FardriverBle(settings, fast).restore(), 'none');
+  } finally {
+    delete globalThis.navigator.bluetooth;
+    delete globalThis.localStorage;
+  }
+});

@@ -14,8 +14,27 @@
 //     with periodic connect attempts as the fallback,
 //   - a data watchdog drops a link that claims to be connected but delivers no frames.
 import { CHAR_UUID, FrameParser, KEEPALIVE, SERVICE_UUID } from '../protocol/fardriver.js';
+import { logLink } from '../link-log.js';
 
 const DEVICE_KEY = 'emoto-dash.ctrlDeviceId';
+const NAME_KEY = 'emoto-dash.ctrlDeviceName';
+
+function storageGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // Without storage the device simply has to be picked again next time.
+  }
+}
 const KEEPALIVE_MS = 1000;
 
 // Name prefixes Fardriver controllers advertise with ("YuanQu" = 远驱, Fardriver's Chinese
@@ -25,7 +44,7 @@ export const CONTROLLER_NAME_PREFIXES = ['YuanQu', 'YUANQU', 'Yuanqu', 'yuanqu',
 const DEFAULT_TIMING = {
   retryMinMs: 1000,
   retryMaxMs: 5000,
-  connectTimeoutMs: 20000,
+  connectTimeoutMs: 12000,
   stepTimeoutMs: 8000,
   watchdogMs: 5000,
 };
@@ -56,6 +75,10 @@ export class FardriverBle extends EventTarget {
     this.status = 'disconnected';
     this.parser = new FrameParser((f) => {
       this.lastFrameAt = Date.now();
+      if (!this.firstFrameLogged) {
+        this.firstFrameLogged = true;
+        logLink('Receiving data');
+      }
       this.dispatchEvent(new CustomEvent('frame', { detail: f }));
     });
     this.userClosed = false;
@@ -69,6 +92,12 @@ export class FardriverBle extends EventTarget {
     this.attempts = 0;
     this.lastError = '';
     this.reconnectMethod = 'polling';
+    this.firstFrameLogged = false;
+  }
+
+  // Name of the remembered controller, if any (shown in Settings).
+  static get rememberedName() {
+    return storageGet(DEVICE_KEY) ? storageGet(NAME_KEY) || 'unnamed device' : null;
   }
 
   static get supported() {
@@ -93,44 +122,56 @@ export class FardriverBle extends EventTarget {
   // Must be called from a user gesture (it opens Chrome's device chooser).
   // showAll lists every nearby device, for controllers with an unrecognised name.
   async pick({ showAll = false } = {}) {
+    logLink(`Opening device chooser${showAll ? ' (all devices)' : ''}`);
     const device = await navigator.bluetooth.requestDevice(
       showAll
         ? { acceptAllDevices: true, optionalServices: [SERVICE_UUID] }
         : { filters: chooserFilters(this.settings.controllerName), optionalServices: [SERVICE_UUID] },
     );
-    try {
-      localStorage.setItem(DEVICE_KEY, device.id);
-    } catch {
-      // Without storage the device simply has to be picked again next time.
-    }
+    logLink(`Picked "${device.name || '?'}" (id ${device.id.slice(0, 8)}…)`);
+    storageSet(DEVICE_KEY, device.id);
+    storageSet(NAME_KEY, device.name || '');
     await this.attach(device);
   }
 
   // Reattaches to the previously picked device without a chooser, where the browser allows it.
   // Returns true when a remembered device was found; connecting then continues in the background.
+  // Returns true when reattached, otherwise a reason: 'unsupported' | 'none' | 'not-found'.
   async restore() {
-    if (!FardriverBle.canRestore) return false;
-    let id = null;
-    try {
-      id = localStorage.getItem(DEVICE_KEY);
-    } catch {
-      return false;
+    if (!FardriverBle.canRestore) {
+      logLink('Launch: Chrome cannot restore devices (flag off)');
+      return 'unsupported';
     }
-    if (!id) return false;
+    const id = storageGet(DEVICE_KEY);
+    const name = storageGet(NAME_KEY);
     const devices = await navigator.bluetooth.getDevices();
-    const device = devices.find((d) => d.id === id);
-    if (!device) return false;
+    const names = devices.map((d) => d.name || '?').join(', ');
+    logLink(`Launch: Chrome remembers ${devices.length} device(s)${devices.length ? `: ${names}` : ''}; saved "${name || '-'}"`);
+    // Prefer the saved id, then the saved name, then a lone device with a Fardriver-style name.
+    // Ids can change when Chrome's permission backend changes, so the fallbacks matter.
+    const looksLikeController = (d) => CONTROLLER_NAME_PREFIXES.some((p) => d.name?.startsWith(p));
+    const candidates = devices.filter(looksLikeController);
+    const device = devices.find((d) => id && d.id === id)
+      || devices.find((d) => name && d.name === name)
+      || (candidates.length === 1 ? candidates[0] : null);
+    if (!device) {
+      logLink(devices.length
+        ? 'Launch: none of them is the controller; pick it once more'
+        : 'Launch: nothing to restore; pick the controller once (flag on) and Chrome will keep it');
+      return devices.length ? 'not-found' : 'none';
+    }
+    storageSet(DEVICE_KEY, device.id);
+    storageSet(NAME_KEY, device.name || '');
+    logLink(`Launch: restoring "${device.name || '?'}"`);
     this.attach(device).catch(() => {}); // a powered-off controller is expected here; keep retrying
     return true;
   }
 
   async forget() {
     this.disconnect();
-    try {
-      localStorage.removeItem(DEVICE_KEY);
-    } catch {
-      // Nothing stored.
-    }
+    logLink('Controller forgotten');
+    storageSet(DEVICE_KEY, null);
+    storageSet(NAME_KEY, null);
     await this.device?.forget?.().catch(() => {});
     this.device = null;
   }
@@ -149,6 +190,8 @@ export class FardriverBle extends EventTarget {
     device.removeEventListener('advertisementreceived', this.onAdvertisement);
     device.addEventListener('advertisementreceived', this.onAdvertisement);
     this.setStatus('connecting');
+    // Devices restored at launch may need an advertisement before Chrome can connect to them.
+    this.watchForAdvertisements();
     await this.connect({ throwOnFail: true });
   }
 
@@ -157,6 +200,7 @@ export class FardriverBle extends EventTarget {
     this.connecting = true;
     clearTimeout(this.retryTimer);
     this.attempts++;
+    if (this.attempts <= 3 || this.attempts % 10 === 0) logLink(`Connect attempt ${this.attempts}`);
     const t = this.timing;
     try {
       const server = await withTimeout(this.device.gatt.connect(), t.connectTimeoutMs, 'Connect');
@@ -171,11 +215,16 @@ export class FardriverBle extends EventTarget {
       this.lastFrameAt = Date.now();
       this.lastError = '';
       this.stopWatching();
+      this.firstFrameLogged = false;
+      logLink(`Connected to "${this.device.name || '?'}" after ${this.attempts} attempt(s)`);
+      this.attempts = 0;
       this.setStatus('connected');
       this.startKeepAlive();
       this.startWatchdog();
     } catch (err) {
-      this.lastError = err?.message || String(err);
+      const message = err?.message || String(err);
+      if (message !== this.lastError || this.attempts <= 3) logLink(`Connect failed: ${message}`);
+      this.lastError = message;
       console.warn('Controller connect failed', err);
       // Abandon a half-open attempt so the next one starts clean.
       try {
@@ -204,6 +253,7 @@ export class FardriverBle extends EventTarget {
   };
 
   onDisconnected = () => {
+    logLink(this.userClosed ? 'Disconnected by user' : 'Link dropped (controller off or out of range)');
     clearInterval(this.keepAliveTimer);
     clearInterval(this.watchdogTimer);
     this.characteristic = null;
@@ -215,8 +265,9 @@ export class FardriverBle extends EventTarget {
     this.scheduleRetry();
   };
 
-  onAdvertisement = () => {
+  onAdvertisement = (e) => {
     if (this.status === 'connected' || this.connecting) return;
+    logLink(`Controller advertising (rssi ${e?.rssi ?? '?'}), connecting`);
     this.stopWatching();
     this.retryMs = this.timing.retryMinMs;
     this.connect().catch(() => {});
@@ -225,6 +276,7 @@ export class FardriverBle extends EventTarget {
   scheduleRetry() {
     clearTimeout(this.retryTimer);
     if (this.userClosed || !this.settings.autoReconnect || !this.device) {
+      if (!this.userClosed && this.device) logLink('Not retrying: "Reconnect automatically" is off');
       this.setStatus('disconnected');
       return;
     }
@@ -240,9 +292,11 @@ export class FardriverBle extends EventTarget {
     this.watchAbort = abort;
     try {
       await this.device.watchAdvertisements({ signal: abort.signal });
+      if (this.reconnectMethod !== 'advertisements + polling') logLink('Watching for controller advertisements');
       this.reconnectMethod = 'advertisements + polling';
     } catch (err) {
       if (this.watchAbort === abort) this.watchAbort = null;
+      if (err?.name !== 'AbortError') logLink(`Advertisement watch unavailable: ${err?.message || err}`);
       this.reconnectMethod = 'polling';
     }
   }
@@ -270,6 +324,7 @@ export class FardriverBle extends EventTarget {
     this.watchdogTimer = setInterval(() => {
       if (this.status !== 'connected' || Date.now() - this.lastFrameAt < ms) return;
       this.lastError = `No data for ${Math.round(ms / 1000)} s`;
+      logLink(`${this.lastError}; restarting the link`);
       clearInterval(this.watchdogTimer);
       try {
         this.device.gatt.disconnect(); // fires gattserverdisconnected -> reconnect loop

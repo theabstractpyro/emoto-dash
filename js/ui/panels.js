@@ -100,7 +100,7 @@ export function renderDetails(table, telemetry, linkStats) {
     ['Frames / s', linkStats.fps.toFixed(1)], ['Frames total', String(linkStats.frames)],
     ['Bytes discarded', String(linkStats.dropped)], ['Connect attempts', String(linkStats.attempts)],
     ['Last link error', linkStats.lastError || 'none'], ['Reconnect method', linkStats.reconnectMethod],
-    ['Auto-connect at app start', linkStats.canRestore ? 'supported' : 'needs Chrome flag (see README)']);
+    ['Auto-connect at app start', linkStats.canRestore ? 'supported' : 'needs Chrome setting (see Settings)']);
   const b = telemetry.bms.values;
   if (Object.keys(b).length) {
     rows.push(['BMS'], ...Object.entries(b).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)]));

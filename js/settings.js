@@ -35,7 +35,8 @@ export const SCHEMA = [
 
   { group: 'Connection', key: 'controllerName', label: 'Controller name starts with (blank = detect automatically)', type: 'text', default: '', placeholder: 'e.g. YuanQu' },
   { group: 'Connection', key: 'keepAlive', label: 'Send keep-alive packets (as the official app does)', type: 'checkbox', default: true },
-  { group: 'Connection', key: 'autoReconnect', label: 'Reconnect automatically', type: 'checkbox', default: true },
+  { group: 'Connection', key: 'autoConnectOnLaunch', label: 'Connect automatically when the app opens', type: 'checkbox', default: true },
+  { group: 'Connection', key: 'autoReconnect', label: 'Reconnect automatically after the link drops (key off/on)', type: 'checkbox', default: true },
 ];
 
 export const DEFAULTS = Object.fromEntries(SCHEMA.map((f) => [f.key, f.default]));

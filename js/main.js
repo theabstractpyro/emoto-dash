@@ -7,6 +7,7 @@ import { FardriverBle } from './sources/fardriver-ble.js';
 import { DemoSource } from './sources/demo.js';
 import { DashView } from './ui/dash.js';
 import { APP_VERSION } from './version.js';
+import { clearLinkLog, formatLinkLog, logLink } from './link-log.js';
 import { buildSettingsForm, fillSettingsForm, readSettingsForm, renderDetails } from './ui/panels.js';
 
 const params = new URLSearchParams(location.search);
@@ -98,16 +99,25 @@ async function connectController({ showAll = false } = {}) {
 async function tryRestore() {
   if (!ble) return;
   setCtrlSource(ble);
-  try {
-    if (await ble.restore()) {
-      $('start').hidden = true;
-      keepAwake();
-      return;
-    }
-  } catch (err) {
-    console.warn('Restore failed', err);
+  if (!settings.autoConnectOnLaunch) {
+    logLink('Launch: auto-connect at launch is turned off in Settings');
+    showStart(null);
+    return;
   }
-  showStart(null);
+  let result;
+  try {
+    result = await ble.restore();
+  } catch (err) {
+    logLink(`Launch: restore failed: ${err?.message || err}`);
+  }
+  if (result === true) {
+    $('start').hidden = true;
+    keepAwake();
+    return;
+  }
+  showStart(result === 'none' || result === 'not-found'
+    ? 'Pick your controller once more. With auto-connect on, Chrome remembers it from now on.'
+    : null);
 }
 
 function showStart(message) {
@@ -143,7 +153,10 @@ function tick() {
     ctrl: linkState(telemetry.ctrl, d.ctrlFresh),
     bms: linkState(telemetry.bms, d.bmsFresh),
   });
-  if ($('details').open) renderDetails($('details-table'), telemetry, linkStats);
+  if ($('details').open) {
+    renderDetails($('details-table'), telemetry, linkStats);
+    renderLog();
+  }
   if (now - lastSave > 5000) {
     saveTrip(trip);
     lastSave = now;
@@ -175,6 +188,7 @@ async function keepAwake() {
 }
 
 document.addEventListener('visibilitychange', () => {
+  logLink(document.visibilityState === 'visible' ? 'App in foreground' : 'App in background (timers may pause)');
   if (document.visibilityState !== 'visible' || telemetry.ctrl.status === 'disconnected') return;
   keepAwake();
   ble?.kick(); // timers may have been paused while the screen was off
@@ -210,6 +224,7 @@ function toast(text, ms = 3500) {
 buildSettingsForm($('settings-fields'));
 
 $('btn-settings').addEventListener('click', () => {
+  showAutoConnectStatus();
   fillSettingsForm($('settings-form'), settings);
   $('settings').showModal();
 });
@@ -306,7 +321,9 @@ $('btn-theme').addEventListener('click', () => {
 $('btn-fullscreen').addEventListener('click', toggleFullscreen);
 $('btn-details').addEventListener('click', () => {
   renderDetails($('details-table'), telemetry, linkStats);
+  renderLog();
   $('details').showModal();
+  $('link-log').scrollTop = $('link-log').scrollHeight;
 });
 $('btn-connect').addEventListener('click', () => connectController());
 $('btn-connect-all').addEventListener('click', () => connectController({ showAll: true }));
@@ -341,14 +358,53 @@ async function updateApp() {
 function showVersion() {
   $('version-start').textContent = `Version ${APP_VERSION}`;
   $('version-settings').textContent = `eMoto Dash v${APP_VERSION}`;
-  const ok = FardriverBle.canRestore;
-  const status = $('autoconnect-status');
-  status.textContent = ok
-    ? '✓ Enabled: the app reconnects to your controller whenever it opens.'
-    : 'Not set up yet: Chrome will ask you to pick the controller each time the app opens.';
-  status.toggleAttribute('data-ok', ok);
-  $('autoconnect-steps').hidden = ok;
 }
+
+// Settings card: whether Chrome supports restoring devices, and what is remembered.
+function showAutoConnectStatus() {
+  const supported = FardriverBle.canRestore;
+  const remembered = FardriverBle.rememberedName;
+  const status = $('autoconnect-status');
+  status.textContent = supported
+    ? '✓ Chrome setting is on'
+    : 'Chrome setting is off: Chrome will ask you to pick the controller each time the app opens.';
+  status.toggleAttribute('data-ok', supported);
+  $('autoconnect-steps').hidden = supported;
+  const detail = $('autoconnect-detail');
+  detail.hidden = !supported;
+  detail.innerHTML = !remembered
+    ? 'No controller remembered yet: connect once and it will be.'
+    : `Remembered controller: <b>${remembered.replace(/[<>&]/g, '')}</b>. `
+      + 'If the app still opens to the Connect screen, pick it again once and check Diagnostics → Connection log.';
+}
+
+function renderLog() {
+  const text = formatLinkLog() || 'No events yet.';
+  const pre = $('link-log');
+  if (pre.textContent !== text) {
+    const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 4;
+    pre.textContent = text;
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  }
+}
+
+$('btn-copy-log').addEventListener('click', async () => {
+  const header = `eMoto Dash v${APP_VERSION} | ${navigator.userAgent}\n`
+    + `canRestore=${FardriverBle.canRestore} watchAdvertisements=${'watchAdvertisements' in (globalThis.BluetoothDevice?.prototype ?? {})} `
+    + `status=${telemetry.ctrl.status} settings: autoConnectOnLaunch=${settings.autoConnectOnLaunch} autoReconnect=${settings.autoReconnect}\n\n`;
+  try {
+    await navigator.clipboard.writeText(header + formatLinkLog());
+    toast('Log copied. Paste it into a message.', 4000);
+  } catch {
+    getSelection().selectAllChildren($('link-log'));
+    toast('Long-press the highlighted log and choose Copy', 5000);
+  }
+});
+
+$('btn-clear-log').addEventListener('click', () => {
+  clearLinkLog();
+  renderLog();
+});
 
 // If the page and its scripts come from different releases (a partially cached update),
 // refresh once to bring everything to the same version.
@@ -368,6 +424,7 @@ function checkVersionConsistency() {
 
 // ---------- Startup ----------
 
+logLink(`App opened (v${APP_VERSION}, ${FardriverBle.canRestore ? 'auto-connect supported' : 'auto-connect needs Chrome flag'})`);
 applyTheme();
 if (!ble) {
   $('btn-connect').disabled = true;

@@ -1,6 +1,6 @@
 // Offline cache for the app shell, so the dash starts without mobile data.
 // Bump VERSION whenever files change so phones pick up the update.
-const VERSION = 'emoto-dash-v0.3.0';
+const VERSION = 'emoto-dash-v0.4.0';
 const FILES = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const FILES = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'js/main.js',
+  'js/link-log.js',
   'js/version.js',
   'js/settings.js',
   'js/store.js',
