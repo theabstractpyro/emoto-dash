@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { FrameParser, decodeFrame } from '../js/protocol/fardriver.js';
 import { DEFAULTS } from '../js/settings.js';
 import {
-  applyPatch, createTelemetry, derive, integrateTrip, newTrip, rejectTempGlitches, rpmToKmh,
+  applyPatch, createTelemetry, derive, integrateTrip, newTrip, rejectTempGlitches, rpmToKmh, shaftRpm,
 } from '../js/store.js';
 
 const CAPTURE = fileURLToPath(new URL('../../FARDRIVER REVERSE ENGINEERING/analysis/data/btsnoop_att.jsonl', import.meta.url));
@@ -46,6 +46,22 @@ test('rpm to speed uses tire, ratio and calibration', () => {
   close(rpmToKmh(840, DEFAULTS), 96.5218, 1e-3);
   close(rpmToKmh(840, { ...DEFAULTS, gearRatio: 2 }), 96.5218 / 2, 1e-3);
   close(rpmToKmh(-840, { ...DEFAULTS, speedCalibration: 1.1 }), 96.5218 * 1.1, 1e-3);
+});
+
+test('shaft rpm: hub motors (16+ pole pairs) report 4-pole-pair rpm, as the official app shows', () => {
+  assert.equal(shaftRpm({ motorRpm: 840, polePairs: 4 }), 840);
+  assert.equal(shaftRpm({ motorRpm: 840 }), 840);
+  assert.equal(shaftRpm({ motorRpm: 840, polePairs: 16 }), 210);
+  assert.equal(shaftRpm({ motorRpm: -840, polePairs: 24 }), -140);
+  assert.equal(shaftRpm({}), null);
+  // Controller left at its factory 4 pole pairs on a 16-pole-pair hub motor: the setting wins.
+  assert.equal(shaftRpm({ motorRpm: 840, polePairs: 4 }, { motorPolePairs: 16 }), 210);
+  assert.equal(shaftRpm({ motorRpm: 840, polePairs: 16 }, { motorPolePairs: 0 }), 210);
+  const t = createTelemetry();
+  applyPatch(t.ctrl, { motorRpm: 840, polePairs: 16 }, 1000);
+  const d = derive(t, DEFAULTS, newTrip(), 1000);
+  assert.equal(d.motorRpm, 210);
+  close(d.speedKmh, 96.5218 / 4, 1e-3);
 });
 
 test('derive: power, regen, mode flags and staleness', () => {

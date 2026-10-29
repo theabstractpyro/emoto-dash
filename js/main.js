@@ -1,7 +1,7 @@
 import { decodeFrame } from './protocol/fardriver.js';
 import { loadSettings, saveSettings } from './settings.js';
 import {
-  applyPatch, createTelemetry, derive, integrateTrip, loadTrip, newTrip, rejectTempGlitches, rpmToKmh, saveTrip,
+  applyPatch, createTelemetry, derive, integrateTrip, loadTrip, newTrip, rejectTempGlitches, rpmToKmh, saveTrip, shaftRpm,
 } from './store.js';
 import { FardriverBle } from './sources/fardriver-ble.js';
 import { FardriverNative, isNativeApp } from './sources/fardriver-native.js';
@@ -377,7 +377,7 @@ function calibrateWithGps() {
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const gps = pos.coords.speed;
-      const rpm = telemetry.ctrl.values.motorRpm;
+      const rpm = shaftRpm(telemetry.ctrl.values, settings);
       if (gps == null || gps < 6.7 || !rpm || performance.now() - telemetry.ctrl.at > 1000) return;
       samples.push(gps / (rpmToKmh(rpm, uncalibrated) / 3.6));
       toast(`Calibrating… ${samples.length}/10`, 0);
@@ -387,7 +387,9 @@ function calibrateWithGps() {
       updateSettings({ ...settings, speedCalibration: factor });
       stop(`Speed calibration set to ×${factor.toFixed(3)}`);
     },
-    (err) => stop(`GPS error: ${err.message}`),
+    (err) => stop(err.code === err.PERMISSION_DENIED
+      ? 'Location is off for this app. Allow it in Android Settings › Apps › eMoto Dash › Permissions.'
+      : `GPS error: ${err.message}`),
     { enableHighAccuracy: true, maximumAge: 0 },
   );
 }

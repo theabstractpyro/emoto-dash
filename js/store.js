@@ -44,6 +44,15 @@ export function rejectTempGlitches(section, patch) {
   return patch;
 }
 
+// Motors with 16+ pole pairs (hub motors) report speed as if they had 4 pole pairs; the official
+// app shows rpm × 4 / polePairs for them, so the same correction gives the real shaft speed.
+// Controllers ship set to 4 pole pairs, so the motor's real count can be given in settings.
+export function shaftRpm(c, s) {
+  if (c.motorRpm == null) return null;
+  const polePairs = s?.motorPolePairs || c.polePairs;
+  return polePairs >= 16 ? (c.motorRpm * 4) / polePairs : c.motorRpm;
+}
+
 export function rpmToKmh(rpm, s) {
   const circumferenceM = Math.PI * s.tireDiameterIn * 0.0254;
   return ((Math.abs(rpm) / s.gearRatio) * circumferenceM * 60 * s.speedCalibration) / 1000;
@@ -104,7 +113,8 @@ export function derive(t, s, trip, now) {
   const pick = (bmsKey, ctrlKey) =>
     bmsFresh && b[bmsKey] != null ? b[bmsKey] : ctrlFresh && c[ctrlKey] != null ? c[ctrlKey] : null;
 
-  const speedKmh = ctrlFresh && c.motorRpm != null ? rpmToKmh(c.motorRpm, s) : null;
+  const rpm = ctrlFresh ? shaftRpm(c, s) : null;
+  const speedKmh = rpm != null ? rpmToKmh(rpm, s) : null;
   const lineCurrent = ctrlFresh && c.lineCurrent != null ? c.lineCurrent : null;
   const powerKw = lineCurrent != null && c.voltage != null ? (c.voltage * lineCurrent) / 1000 : null;
   const voltage = pick('voltage', 'voltage');
@@ -122,7 +132,7 @@ export function derive(t, s, trip, now) {
     ctrlFresh,
     bmsFresh,
     speedKmh,
-    motorRpm: ctrlFresh ? c.motorRpm ?? null : null,
+    motorRpm: rpm,
     powerKw,
     lineCurrent,
     regenEnabled: ctrlFresh && !!c.eabsEnabled,

@@ -70,7 +70,7 @@ const hex = (v) => (v == null ? '–' : `0x${v.toString(16).toUpperCase().padSta
 const num = (v, d = 1, unit = '') => (v == null ? '–' : `${v.toFixed(d)}${unit}`);
 
 const CTRL_ROWS = [
-  ['Motor speed', (c) => num(c.motorRpm, 0, ' rpm')],
+  ['Motor speed (as reported)', (c) => num(c.motorRpm, 0, ' rpm')],
   ['Battery voltage', (c) => num(c.voltage, 1, ' V')],
   ['Battery current', (c) => num(c.lineCurrent, 2, ' A')],
   ['Phase A current', (c) => num(c.phaseA, 1, ' A')],
@@ -84,7 +84,7 @@ const CTRL_ROWS = [
   ['SOC (controller estimate)', (c) => num(c.soc, 0, ' %')],
   ['Gear / speed switch', (c) => (c.gear == null ? '–' : `${c.gear} / ${c.speedSwitch}`)],
   ['Regen (EABS) enabled', (c) => (c.eabsEnabled == null ? '–' : c.eabsEnabled ? 'yes' : 'no')],
-  ['Pole pairs', (c) => num(c.polePairs, 0)],
+  ['Pole pairs (controller setting)', (c) => num(c.polePairs, 0)],
   ['Firmware', (c) => num(c.fwVersion, 0)],
   ['Fault bits', (c) => hex(c.faults)],
   ['Faults', (c) => describeFaults(c).join(', ') || 'none'],

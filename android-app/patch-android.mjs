@@ -19,14 +19,15 @@ function edit(path, fn) {
   writeFileSync(path, after);
 }
 
-// Permissions: Android 12+ scans without location (neverForLocation); 11 and older need location.
+// Permissions: Android 12+ scans without location (neverForLocation); 11 and older need location
+// to scan. Location is declared for every version so GPS speed calibration can ask for it.
 edit(join(main, 'AndroidManifest.xml'), (s) =>
   s
     .replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
       '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    xmlns:tools="http://schemas.android.com/tools">')
     .replace('<uses-permission android:name="android.permission.INTERNET" />', `<uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:targetApi="s" />

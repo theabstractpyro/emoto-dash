@@ -5,8 +5,9 @@ const KEY = 'emoto-dash.settings';
 export const SCHEMA = [
   { group: 'Speed', key: 'units', label: 'Units', type: 'select', options: [['mph', 'mph / mi'], ['kmh', 'km/h / km']], default: 'mph' },
   { group: 'Speed', key: 'tireDiameterIn', label: 'Tire outer diameter', unit: 'in', type: 'number', min: 10, max: 40, step: 0.1, default: 24 },
-  { group: 'Speed', key: 'gearRatio', label: 'Motor : wheel ratio (1 for hub motor)', type: 'number', min: 0.5, max: 20, step: 0.01, default: 1 },
-  { group: 'Speed', key: 'speedCalibration', label: 'Speed calibration factor', type: 'number', min: 0.2, max: 5, step: 0.001, default: 1 },
+  { group: 'Speed', key: 'motorPolePairs', label: "Motor pole pairs (0 = use the controller's setting; QS205 V3 = 16)", type: 'number', min: 0, max: 64, step: 1, default: 0 },
+  { group: 'Speed', key: 'gearRatio', label: 'Motor : wheel ratio (1 for hub motor; mid-drive: motor turns per wheel turn)', type: 'number', min: 0.5, max: 20, step: 0.01, default: 1 },
+  { group: 'Speed', key: 'speedCalibration', label: 'Speed calibration factor', type: 'number', min: 0.05, max: 20, step: 0.001, default: 1 },
 
   { group: 'Battery', key: 'cellCount', label: 'Cells in series', type: 'number', min: 1, max: 40, step: 1, default: 20 },
   { group: 'Battery', key: 'capacityAh', label: 'Capacity', unit: 'Ah', type: 'number', min: 1, max: 500, step: 0.5, default: 40 },
